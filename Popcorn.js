@@ -74,7 +74,7 @@ class PopcornViewer extends Application {
       foundToken = tokens.find(val => { return val.id == tokenId; })
     }
     if ((combatant.hidden || foundToken.data.hidden) && !game.user.isGM) {
-      continue;
+      return;
     }
 
     let hasActed = true;
