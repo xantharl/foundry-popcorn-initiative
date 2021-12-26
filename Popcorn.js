@@ -5,7 +5,7 @@ class PopcornViewer extends Application {
 
   activateListeners(html) {
     super.activateListeners(html);
-    const myButton = html.find("button[name='act']");
+    const myButton = html.find("button[name='nominate']");
     myButton.on("click", event => this._onClickButton(event, html));
   }
 
@@ -62,7 +62,60 @@ class PopcornViewer extends Application {
     return content;
   }
 
-  prepareCombatant(combatant) {
+  preparePopcorn() {
+    //console.log("PreparePopcorn called");
+    //Get a list of the active combatants
+    if (game.combat != null) {
+      var combatants = game.combat.combatants;
+      var viewer = viewer;
+
+      let table = `<h1>Round ${game.combat.round}</h1><table border="1" cellspacing="0" cellpadding="4">`;
+
+      //Create a header row
+      let rows = 
+        [`<tr>
+            <td style="background: black; color: white;"/>
+            <td style="background: black; color: white;">Character</td>
+            <td style="background: black; color: white;">Init. Points</td>`];
+      if (game.user.isGM) {
+        rows[0] += [`<td style="background: black; color: white;">Nominate?</td>`];
+      }
+      rows[0]+=`</tr>`
+      
+      combatants.forEach(element => this.prepareCombatant(element, rows));
+
+      let myContents = `${table}`;
+      rows.forEach(element => myContents += element)
+      myContents += "</table>"
+      if (game.user.isGM) {
+        myContents += `<button type ="button" onclick='
+            let actors = canvas.tokens.placeables;
+            actors.forEach(actor =>{actor.setFlag("world","popcornHasActed",false)});
+            game.combat.nextRound();
+            ChatMessage.create({content: "Starting a new Round.", speaker : { alias : "Game: "}})
+            '>Next Round</button><p>`
+        myContents += `<button type ="button" onclick='
+            let actors = canvas.tokens.placeables;
+            actors.forEach(actor =>{actor.setFlag("world","popcornHasActed",false)});
+            game.combat.endCombat();
+            ChatMessage.create({content: "Ending the Encounter.", speaker : { alias : "Game: "}})
+            '>End the Encounter</button>`
+      }
+      return myContents;
+    } else { return "<h1>No Conflicts Detected!</h1>" }
+  }
+
+  // This function prepares the contents of the popcorn initiative viewer
+  // Display the current Round number
+  // Display the actor icon of each combatant for which popcornHasActed is false or undefined.
+  // Display the name of each combatant for which popcornHasActed is false or undefined.
+  // Display a button that says 'Nominate'
+  // At the end of the display of buttons etc. display a button that says 'next Round'.
+
+  prepareCombatant(combatant, rows) {
+    var tokenId;
+    var tokens = canvas.tokens.placeables;
+
     if (typeof (combatant.token) != "undefined") {
       tokenId = combatant.token._id;//This is the representative of a token in the combatants list.
     }
@@ -88,7 +141,7 @@ class PopcornViewer extends Application {
       if (hasActed == undefined || hasActed == false) {
         rows.push(`<tr><td width="70"><img src="${foundToken.actor.img}" width="50" height="50"></img>
         </td><td>${foundToken.name}</td>
-        <td><button type="button" id="${tokenId}" name="act" onclick=''>Act</button></td></tr>`);
+        <td><button type="button" id="${tokenId}" name="nominate" onclick=''>Nominate</button></td></tr>`);
       }
     } else {
       if (hasActed == undefined || hasActed == false) {
@@ -97,55 +150,17 @@ class PopcornViewer extends Application {
     }
   }
 
-  preparePopcorn() {
-    //console.log("PreparePopcorn called");
-    //Get a list of the active combatants
-    if (game.combat != null) {
-      var combatants = game.combat.combatants;
-      var tokens = canvas.tokens.placeables;
-      var tokenId;
-      var viewer = viewer;
-
-      let table = `<h1>Exchange ${game.combat.round}</h1><table border="1" cellspacing="0" cellpadding="4">`;
-
-      //Create a header row
-      let rows;
-      if (game.user.isGM) {
-        rows = [`<tr><td style="background: black; color: white;"></td><td style="background: black; color: white;">Character</td><td style="background: black; color: white;">Act Now?</td>`];
-      } else {
-        rows = [`<tr><td style="background: black; color: white;"></td><td style="background: black; color: white;">Character</td>`];
-      }
-      combatants.forEach(prepareCombatant)
-
-      let myContents = `${table}`;
-      rows.forEach(element => myContents += element)
-      myContents += "</table>"
-      if (game.user.isGM) {
-        myContents += `<button type ="button" onclick='
-            let actors = canvas.tokens.placeables;
-            actors.forEach(actor =>{actor.setFlag("world","popcornHasActed",false)});
-            game.combat.nextRound();
-            ChatMessage.create({content: "Starting a new exchange.", speaker : { alias : "Game: "}})
-            '>Next Exchange</button><p>`
-        myContents += `<button type ="button" onclick='
-            let actors = canvas.tokens.placeables;
-            actors.forEach(actor =>{actor.setFlag("world","popcornHasActed",false)});
-            game.combat.endCombat();
-            ChatMessage.create({content: "Ending the conflict.", speaker : { alias : "Game: "}})
-            '>End this conflict</button>`
-      }
-      return myContents;
-    } else { return "<h1>No Conflicts Detected!</h1>" }
+  static onCreateCombatant(combatant) {
+    this.initInterruptPoints(combatant);
   }
 
-  // This function prepares the contents of the popcorn initiative viewer
-  // Display the current exchange number
-  // Display the actor icon of each combatant for which popcornHasActed is false or undefined.
-  // Display the name of each combatant for which popcornHasActed is false or undefined.
-  // Display a button that says 'act now'
-  // At the end of the display of buttons etc. display a button that says 'next exchange'.
-
+  static initInterruptPoints(combatant){
+    combatant.data.flags.interruptPoints = 
+      Math.max(Math.floor(combatant._token._actor.data.data.abilities.dex.mod),1);
+  }
 }
+
+Hooks.on('createCombatant', function(combatant) { PopcornViewer.onCreateCombatant(combatant) });
 
 Hooks.on('getSceneControlButtons', function (hudButtons) {
   PopcornViewer.prepareButtons(hudButtons);
