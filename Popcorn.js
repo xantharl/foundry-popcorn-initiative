@@ -81,7 +81,7 @@ class PopcornViewer extends Application {
             rows = [`<tr><td style="background: black; color: white;"></td><td style="background: black; color: white;">Character</td>`];
         }
         //Create a row for each combatant with the correct flag
-        for(var i=0;i<combatants.length;i++){
+        for(var i=0;i<combatants.size;i++){
           if (combatants[i].token != undefined){ 
 
             tokenId = combatants[i].token._id;//This is the representative of a token in the combatants list.
