@@ -1,36 +1,42 @@
-import {PopcornCombat} from "./PopcornCombat.js";
+import { PopcornCombat } from "./PopcornCombat.js";
 
 class PopcornViewer extends Application {
   super(options) {
     //console.log("Super called");
   }
 
+  timesGetDataHit = 0;
+
   activateListeners(html) {
     super.activateListeners(html);
-    const myButton = html.find("button[name='nominate']");
-    myButton.on("click", event => this._onClickButton(event, html));
+    const nominateButton = html.find("button[name='nominate']");
+    nominateButton.on("click", event => this._onClickNominate(event));
+    
+    const nextRoundButton = html.find("button[name='nextRound']");
+    nextRoundButton.on("click", event => this._onClickNextRound());
+
+    const endCombatButton = html.find("button[name='endCombat']");
+    endCombatButton.on("click", event => this._onClickEndCombat());
   }
 
-  async _onClickButton(event, html) {
+  async _onClickNominate(event) {
     //console.log("Event target id "+event.target.id);
 
     const tokenId = event.target.id;
-    let combatant = game.combat.combatants.find(c => c.token.id == tokenId);
+    let combatant = game.combat.getCombatantByToken(tokenId);
     let currentInit =
       game.combat.current.turn == 0 ? 999
         : game.combat.combatants.find(c => c.id == game.combat.current.combatantId).initiative;
 
     await game.combat.setInitiative(combatant.id, currentInit - 1);
     await combatant.update();
-    await game.combat.prepareDerivedData();
-    await game.combat.update();
+    // await game.combat.prepareDerivedData();
+    // await game.combat.update();
 
-    if (game.combat.combatants.find(c => c.initiative == 0) != null) {
-      // builtin combat.nextTurn assumes a pre-sorted turn order, so let's give it one
-      game.combat.turns.sort(function(a,b) { return (a.initiative>b.initiative) ? 1 : ((b.initiative > a.initiative) ? -1 : 0);} );
-      let pc = new PopcornCombat.PopcornCombat(game.combat);
-      await pc.nextTurn();
-    }
+    // builtin combat.nextTurn assumes a pre-sorted turn order, so let's give it one
+    game.combat.turns.sort(function (a, b) { return (a.initiative > b.initiative) ? -1 : ((b.initiative > a.initiative) ? 1 : 0); });
+    await game.combat.update();
+    await game.combat.nextTurn();
 
     await ChatMessage.create({
       content: `${combatant.token.name} is acting now.`,
@@ -40,9 +46,28 @@ class PopcornViewer extends Application {
       }
     });
     await game.socket.emit("module.Popcorn", { "hasActed": true });
-    this.render(false);
+    // this.render(false);
   }
 
+  async _onClickNextRound() {      
+    await this.resetInitiative();
+    game.combat.nextRound();
+    ChatMessage.create({content: "Starting a new Round.", speaker : { alias : "Game: "}})
+  }
+
+  async _onClickEndCombat() {
+    await this.resetInitiative();
+    game.combat.endCombat();
+    ChatMessage.create({content: "Ending the Encounter.", speaker : { alias : "Game: "}})
+  }
+
+  async resetInitiative() {
+    let combatants = game.combat.combatants.filter(c => c.name != "Placeholder");
+    for (let c of combatants) {
+      await game.combat.setInitiative(c.id,0);
+      await c.update({initiative: this.initiative});
+    }
+  }
   static prepareButtons(hudButtons) {
     let hud = hudButtons.find(val => { return val.name == "token"; })
 
@@ -75,6 +100,7 @@ class PopcornViewer extends Application {
 
   getData() {
     let content = { content: `${this.preparePopcorn()}` }
+    console.log(`getData hit: ${++this.timesGetDataHit}`);
     return content;
   }
 
@@ -92,7 +118,7 @@ class PopcornViewer extends Application {
         <td width="70"><img src="${combatant._token.actor.img}" width="50" height="50"></img></td>
         <td>${combatant._token.name}</td>
         <td>${combatant.getFlag('world', 'availableInterruptPoints')} / ${combatant.getFlag('world', 'interruptPoints')}
-      </tr>`;    
+      </tr>`;
 
     return contents;
   }
@@ -106,11 +132,9 @@ class PopcornViewer extends Application {
       <tr>
           <td style="background: black; color: white;"/>
           <td style="background: black; color: white;">Character</td>
-          <td style="background: black; color: white;">Init. Points</td>`];
-    if (game.user.isGM) {
-      rows[0] += [`<td style="background: black; color: white;">Nominate?</td>`];
-    }
-    rows[0] += `</tr>`
+          <td style="background: black; color: white;">Init. Points</td>
+          <td style="background: black; color: white;">Nominate?</td>
+      </tr>`];
 
     combatants.forEach(c => this.prepareCombatant(c, rows));
 
@@ -118,29 +142,26 @@ class PopcornViewer extends Application {
     rows.forEach(element => myContents += element)
     myContents += "</table>"
     if (game.user.isGM) {
-      myContents += `<button type ="button" onclick='
-          let combatants = game.combat.combatants;
-          game.combat.combatants.forEach(c => game.combat.setInitiative(c.id,0));
-          game.combat.nextRound();
-          ChatMessage.create({content: "Starting a new Round.", speaker : { alias : "Game: "}})
-          '>Next Round</button><p>`
-      myContents += `<button type ="button" onclick='
-          let combatants = game.combat.combatants;            
-          game.combat.combatants.forEach(c => game.combat.setInitiative(c.id,0));
-          game.combat.endCombat();
-          ChatMessage.create({content: "Ending the Encounter.", speaker : { alias : "Game: "}})
-          '>End the Encounter</button>`
+      myContents += `<button type ="button" name="nextRound" onclick="">Next Round</button></br>`
+      myContents += `<button type ="button" name="endCombat" onclick="">End the Encounter</button>`
     }
     return myContents;
   }
-  
+
   preparePopcorn() {
     //console.log("PreparePopcorn called");
     //Get a list of the active combatants
+    if (!game.combat.combatants.find(c => c.name == "Placeholder")) {
+      const toCreate = [];
+      toCreate.push({ actorId: this.id, hidden: true, name: "Placeholder" });
+      game.combat.createEmbeddedDocuments("Combatant", toCreate);
+      game.combat.update();
+    }
     if (game.combat.turn != null) {
       let contents = `<h1>Round ${game.combat.round}</h1>`;
-      if (game.combat.current.turn > 0)
+      if (game.combat.current.turn > 0) {
         contents += this.prepareCurrentTurn();
+      }
       contents += this.prepareRemainingCombatants();
       return contents;
     } else { return "<h1>No Conflicts Detected!</h1>" }
@@ -156,6 +177,7 @@ class PopcornViewer extends Application {
   prepareCombatant(combatant, rows) {
     let foundToken = combatant.token;
 
+    if (foundToken == null) { return; }
     if ((combatant.hidden || foundToken.data.hidden) && !game.user.isGM) {
       return;
     }
@@ -168,18 +190,22 @@ class PopcornViewer extends Application {
         <tr>
           <td width="70"><img src="${foundToken.actor.img}" width="50" height="50"></img></td>
           <td>${foundToken.name}</td>
-          <td>${combatant.getFlag('world', 'availableInterruptPoints')} / ${combatant.getFlag('world', 'interruptPoints')}`;
-
-      if (game.user.isGM) { addString += `<td><button type="button" id="${foundToken.id}" name="nominate" onclick=''>Nominate</button></td>` }
-      addString += '</tr>'
+          <td>${combatant.getFlag('world', 'availableInterruptPoints')} / ${combatant.getFlag('world', 'interruptPoints')}
+          <td><button type="button" id="${foundToken.id}" name="nominate" onclick=''>Nominate</button>
+        </td>
+      </tr>`;
 
       rows.push(addString);
     }
   }
 
   static async onCreateCombatant(combatant) {
-    await this.initInterruptPoints(combatant);
-    await game.combat.setInitiative(combatant.id, 0);
+    if (combatant.name == "Placeholder") {
+      await game.combat.setInitiative(combatant.id, 999);
+    } else {
+      await this.initInterruptPoints(combatant);
+      await game.combat.setInitiative(combatant.id, 0);
+    }
   }
 
   static async initInterruptPoints(combatant) {
@@ -191,7 +217,7 @@ class PopcornViewer extends Application {
   }
 }
 
-export {PopcornViewer};
+export { PopcornViewer };
 
 Hooks.on('createCombatant', function (combatant) { PopcornViewer.onCreateCombatant(combatant) });
 

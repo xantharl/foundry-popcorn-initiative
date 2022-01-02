@@ -12,8 +12,6 @@ class PopcornCombat extends Combat {
     // Determine the next turn number
     let next = game.combat.turns[0];
 
-    // Maybe advance to the next round
-
     // Update the encounter
     const advanceTime = CONFIG.time.turnTime;
     return super.update({id: this.id, turn: this.turn+1, current: next}, {advanceTime});
