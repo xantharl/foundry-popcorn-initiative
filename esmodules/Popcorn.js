@@ -1,10 +1,11 @@
 import { PopcornInterruptHandler } from "./PopcornInterruptHandler.js";
 
 class PopcornViewer extends Application {
-  super(options) {}
+  super(options) { }
 
   timesGetDataHit = 0;
   interruptWindowLength = 5000;
+  interruptCycleInProgress = false;
 
   activateListeners(html) {
     super.activateListeners(html);
@@ -17,7 +18,7 @@ class PopcornViewer extends Application {
     const endCombatButton = html.find("button[name='endCombat']");
     endCombatButton.on("click", event => this._onClickEndCombat());
 
-    const interruptButton = html.find("button[name='endCombat']");
+    const interruptButton = html.find("button[name='interrupt']");
     interruptButton.on("click", event => this._onClickInterrupt());
   }
 
@@ -28,16 +29,23 @@ class PopcornViewer extends Application {
     let combatant = game.combat.getCombatantByToken(tokenId);
 
     await combatant.setFlag('world', 'nominatedTime', Date.now());
-    await this.runInterruptCycle(combatant);
+    combatant.update();
   }
 
+  async onUpdateCombatant(combatant) {
+    if (!this.interruptCycleInProgress && combatant.getFlag('world', 'nominatedTime')) {
+      this.interruptCycleInProgress = true;
+      await this.runInterruptCycle(combatant);
+      this.interruptCycleInProgress = false;
+    }
+  }
   sleep(ms) {
     return new Promise(resolve => setTimeout(resolve, ms));
   }
 
   async runInterruptCycle(combatant, startTime) {
     let waited = 0;
-    while (waited < this.interruptWindowLength){
+    while (waited < this.interruptWindowLength) {
       this.render(true);
       await this.sleep(500);
       waited += 500;
@@ -149,21 +157,21 @@ class PopcornViewer extends Application {
       return contents;
     } else { return "<h1>No Conflicts Detected!</h1>" }
   }
-  prepareNominee() {    
+  prepareNominee() {
     var nominatedTime;
     var nominee;
 
     // we're looping so we can assign multiple easily
-    for (let c of game.combat.combatants){
+    for (let c of game.combat.combatants) {
       nominatedTime = c.getFlag('world', 'nominatedTime');
-      if (nominatedTime){
+      if (nominatedTime) {
         nominee = c;
         break;
       }
     }
-    
+
     if (nominee) {
-      let interruptTimeRemaining = Math.ceil(this.interruptWindowLength/1000 - (Date.now() - nominatedTime) / 1000);
+      let interruptTimeRemaining = Math.ceil(this.interruptWindowLength / 1000 - (Date.now() - nominatedTime) / 1000);
       return `<h2>Current Nominee... Going in ${interruptTimeRemaining}</h2>
       <table border="1" cellspacing="0" cellpadding="4">
       <tr>
@@ -282,6 +290,7 @@ class PopcornViewer extends Application {
 export { PopcornViewer };
 
 Hooks.on('createCombatant', function (combatant) { PopcornViewer.onCreateCombatant(combatant) });
+Hooks.on('updateCombatant', function (combatant) { game.system.popcorn.onUpdateCombatant(combatant) }); 
 
 Hooks.on('getSceneControlButtons', function (hudButtons) {
   PopcornViewer.prepareButtons(hudButtons);
