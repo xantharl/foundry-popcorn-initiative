@@ -38,6 +38,7 @@ class PopcornViewer extends Application {
       await this.runInterruptCycle(combatant);
       this.interruptCycleInProgress = false;
     }
+    this.render(true);
   }
   sleep(ms) {
     return new Promise(resolve => setTimeout(resolve, ms));
@@ -55,6 +56,7 @@ class PopcornViewer extends Application {
       let interruptHandler = new PopcornInterruptHandler(combatant);
       await this.updateInitiative(interruptHandler.resolveInterrupt());
       await combatant.unsetFlag('world', 'nominatedTime');
+      combatant.update();
     }
   }
 
@@ -229,7 +231,8 @@ class PopcornViewer extends Application {
       canNominate = userCombatant && currentCombatant.actor && currentCombatant.actor.id == userCombatant.actor.id;
     }
 
-    combatants.forEach(c => this.prepareCombatant(c, rows, canNominate, userCombatant));
+    combatants.filter(c => !c.getFlag('world', 'nominatedTime'))
+      .forEach(c => this.prepareCombatant(c, rows, canNominate, userCombatant));
 
     let myContents = `<table border="1" cellspacing="0" cellpadding="4">`;
     rows.forEach(element => myContents += element)
@@ -257,7 +260,8 @@ class PopcornViewer extends Application {
 
     let canInterrupt = game.user.isGM || userCombatant.actor.id == combatant.actor.id;
     let isCurrentCombatant = combatant.id == game.combat.current.combatantId;
-    let disabledString = !canNominate && !canInterrupt ? "disabled" : "";
+    let canAct = canNominate || (this.interruptCycleInProgress && canInterrupt)
+    let disabledString = !canAct ? "disabled" : "";
 
     if (
       (combatant.initiative == 0 && !isCurrentCombatant) || game.combat.current.turn == 0) {
