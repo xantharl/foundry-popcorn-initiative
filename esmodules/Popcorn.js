@@ -50,9 +50,12 @@ class PopcornViewer extends Application {
       await this.sleep(500);
       waited += 500;
     }
-    let interruptHandler = new PopcornInterruptHandler(combatant);
-    await this.updateInitiative(interruptHandler.resolveInterrupt());
-    await combatant.unsetFlag('world', 'nominatedTime');
+    // Let Server handle resolution so we don't attempt multiple writes
+    if (game.user.isGM) {
+      let interruptHandler = new PopcornInterruptHandler(combatant);
+      await this.updateInitiative(interruptHandler.resolveInterrupt());
+      await combatant.unsetFlag('world', 'nominatedTime');
+    }
   }
 
   async updateInitiative(combatant) {
@@ -215,17 +218,18 @@ class PopcornViewer extends Application {
           <td style="background: black; color: white;"/>
           <td style="background: black; color: white;">Character</td>
           <td style="background: black; color: white;">Init. Points</td>
-          <td style="background: black; color: white;">Nominate?</td>
+          <td style="background: black; color: white;">${this.interruptCycleInProgress ? "Interrupt?": "Nominate?"}</td>
       </tr>`];
 
     let currentCombatant = game.combat.combatants.get(game.combat.current.combatantId);
     let canNominate = true;
-    if (!game.user.isGM) {
-      let userCombatant = game.combat.combatants.find(c => c.actor.id == game.user.character.id);
+    let userCombatant;
+    if (!game.user.isGM) {      
+      userCombatant = game.combat.combatants.find(c => c.actor.id == game.user.character.id);
       canNominate = userCombatant && currentCombatant.actor && currentCombatant.actor.id == userCombatant.actor.id;
     }
 
-    combatants.forEach(c => this.prepareCombatant(c, rows, canNominate));
+    combatants.forEach(c => this.prepareCombatant(c, rows, canNominate, userCombatant));
 
     let myContents = `<table border="1" cellspacing="0" cellpadding="4">`;
     rows.forEach(element => myContents += element)
@@ -244,15 +248,16 @@ class PopcornViewer extends Application {
   // Display a button that says 'Nominate'
   // At the end of the display of buttons etc. display a button that says 'next Round'.
 
-  prepareCombatant(combatant, rows, canNominate) {
+  prepareCombatant(combatant, rows, canNominate, userCombatant) {
     let foundToken = combatant.token;
     if (!foundToken) { return; }
     if ((combatant.hidden || foundToken.data.hidden) && !game.user.isGM) {
       return;
     }
 
+    let canInterrupt = game.user.isGM || userCombatant.actor.id == combatant.actor.id;
     let isCurrentCombatant = combatant.id == game.combat.current.combatantId;
-    let disabledString = !canNominate ? "disabled" : "";
+    let disabledString = !canNominate && !canInterrupt ? "disabled" : "";
 
     if (
       (combatant.initiative == 0 && !isCurrentCombatant) || game.combat.current.turn == 0) {
@@ -261,7 +266,11 @@ class PopcornViewer extends Application {
           <td width="70"><img src="${foundToken.actor.img}" width="50" height="50"></img></td>
           <td>${foundToken.name}</td>
           <td>${combatant.getFlag('world', 'availableInterruptPoints')} / ${combatant.getFlag('world', 'interruptPoints')}
-          <td><button type="button" id="${foundToken.id}" name="nominate" onclick='' ${disabledString}>Nominate</button>
+          <td>
+            <button type="button" id="${foundToken.id}" 
+              name="${this.interruptCycleInProgress ? "interrupt": "nominate"}" 
+              onclick='' ${disabledString}>${this.interruptCycleInProgress ? "Interrupt": "Nominate"}
+            </button>
         </td>
       </tr>`;
 
@@ -290,7 +299,7 @@ class PopcornViewer extends Application {
 export { PopcornViewer };
 
 Hooks.on('createCombatant', function (combatant) { PopcornViewer.onCreateCombatant(combatant) });
-Hooks.on('updateCombatant', function (combatant) { game.system.popcorn.onUpdateCombatant(combatant) }); 
+Hooks.on('updateCombatant', function (combatant) { game.system.popcorn.onUpdateCombatant(combatant) });
 
 Hooks.on('getSceneControlButtons', function (hudButtons) {
   PopcornViewer.prepareButtons(hudButtons);
