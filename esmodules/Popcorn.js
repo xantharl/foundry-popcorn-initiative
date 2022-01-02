@@ -1,5 +1,3 @@
-import { PopcornCombat } from "./PopcornCombat.js";
-
 class PopcornViewer extends Application {
   super(options) {
     //console.log("Super called");
@@ -136,7 +134,14 @@ class PopcornViewer extends Application {
           <td style="background: black; color: white;">Nominate?</td>
       </tr>`];
 
-    combatants.forEach(c => this.prepareCombatant(c, rows));
+    let currentCombatant = game.combat.combatants.get(game.combat.current.combatantId);
+    let canNominate = true;
+    if (!game.user.isGM) {
+      let userCombatant = game.combat.combatants.find(c => c.actor.id == game.user.character.id);
+      canNominate = userCombatant && currentCombatant.actor && currentCombatant.actor.id == userCombatant.actor.id;
+    }
+
+    combatants.forEach(c => this.prepareCombatant(c, rows, canNominate));
 
     let myContents = `<table border="1" cellspacing="0" cellpadding="4">`;
     rows.forEach(element => myContents += element)
@@ -174,15 +179,15 @@ class PopcornViewer extends Application {
   // Display a button that says 'Nominate'
   // At the end of the display of buttons etc. display a button that says 'next Round'.
 
-  prepareCombatant(combatant, rows) {
+  prepareCombatant(combatant, rows, canNominate) {
     let foundToken = combatant.token;
-
-    if (foundToken == null) { return; }
+    if (!foundToken) { return; }
     if ((combatant.hidden || foundToken.data.hidden) && !game.user.isGM) {
       return;
     }
 
     let isCurrentCombatant = combatant.id == game.combat.current.combatantId;
+    let disabledString = !canNominate ? "disabled" : "";
 
     if (
       (combatant.initiative == 0 && !isCurrentCombatant) || game.combat.current.turn == 0) {
@@ -191,7 +196,7 @@ class PopcornViewer extends Application {
           <td width="70"><img src="${foundToken.actor.img}" width="50" height="50"></img></td>
           <td>${foundToken.name}</td>
           <td>${combatant.getFlag('world', 'availableInterruptPoints')} / ${combatant.getFlag('world', 'interruptPoints')}
-          <td><button type="button" id="${foundToken.id}" name="nominate" onclick=''>Nominate</button>
+          <td><button type="button" id="${foundToken.id}" name="nominate" onclick='' ${disabledString}>Nominate</button>
         </td>
       </tr>`;
 
