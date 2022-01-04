@@ -35,6 +35,7 @@ class PopcornInterruptHandler extends Application {
         // TODO: Handle damage interrupts 
  
         let interrupters = this.getAttemptedInterrupters(); 
+        
         if (interrupters.length == 0) 
             return this.nomineeCombatant; 
  
@@ -49,7 +50,7 @@ class PopcornInterruptHandler extends Application {
                 return mostDisruptive; 
             } 
             else if (mostDisruptive._token._actor.data.data.abilities.dex.mod == this.nomineeCombatant._token._actor.data.data.abilities.dex.mod) { 
-                return resolveRolloff(mostDisruptive, this.nomineeCombatant); 
+                return this.resolveRolloff(mostDisruptive, this.nomineeCombatant); 
             } 
  
             return this.nomineeCombatant; 
