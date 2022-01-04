@@ -21,17 +21,26 @@ class PopcornViewer extends Application {
 
     const interruptButton = html.find("button[name='interrupt']");
     interruptButton.on("click", event => this._onClickInterrupt(event));
+
+    if (game.user.isGM) {
+      // game.socket.on("module.Popcorn.RegisterInterrupt", this._onRegisterInterrupt);
+      game.socket.on("module.Popcorn", (socket) => {
+        console.log(`Interrupt received: ${socket}`);
+      });
+    }
   }
 
-  getInterruptHandler(combatant){
-    if (!game.system.popcorn.interruptHandler) {      
-      if(!combatant)
-        combatant = game.combat.combatants.find( c => c.id == game.combat.current.combatantId );
+  getInterruptHandler(combatant) {
+    if (!game.system.popcorn.interruptHandler) {
+      if (!combatant)
+        combatant = game.combat.combatants.find(c => c.id == game.combat.current.combatantId);
       game.system.popcorn.interruptHandler = new PopcornInterruptHandler(combatant);
     }
     return game.system.popcorn.interruptHandler;
   }
   async _onClickNominate(event) {
+    //console.log("Event target id "+event.target.id);  
+
     const tokenId = event.target.id;
     let combatant = game.combat.getCombatantByToken(tokenId);
 
@@ -45,14 +54,16 @@ class PopcornViewer extends Application {
       await this.runInterruptCycle(combatant);
       this.interruptCycleInProgress = false;
     }
-    this.render(false);
+    this.render(true);
   }
   sleep(ms) {
     return new Promise(resolve => setTimeout(resolve, ms));
   }
 
   async runInterruptCycle(combatant, startTime) {
-    handler = this.getInterruptHandler(combatant);
+    // This one kicks off the whole thing so we need a new handler
+    game.system.popcorn.interruptHandler = new PopcornInterruptHandler(combatant);
+    let handler = game.system.popcorn.interruptHandler;
 
     let waited = 0;
     while (waited < this.interruptWindowLength) {
@@ -60,18 +71,18 @@ class PopcornViewer extends Application {
       await this.sleep(500);
       waited += 500;
     }
-    // Let Server handle resolution so we don't attempt multiple writes 
+    // Let Server handle resolution so we don't attempt multiple writes  
     if (game.user.isGM) {
       let winner = handler.resolveInterrupt();
       await this.updateInitiative(winner);
       await combatant.unsetFlag('world', 'nominatedTime');
 
-      // Unset interrupt attempt flags for the next go around 
+      // Unset interrupt attempt flags for the next go around  
       await handler.clearFlags();
       combatant.update();
     }
 
-    // Unset interrupt attempt flags for the next go around
+    // Unset interrupt attempt flags for the next go around 
     await handler.clearFlags();
   }
 
@@ -83,11 +94,11 @@ class PopcornViewer extends Application {
     await game.combat.setInitiative(combatant.id, currentInit - 1);
     await combatant.update();
 
-    // builtin combat.nextTurn assumes a pre-sorted turn order, so let's give it one 
+    // builtin combat.nextTurn assumes a pre-sorted turn order, so let's give it one  
     game.combat.turns.sort(function (a, b) { return (a.initiative > b.initiative) ? -1 : ((b.initiative > a.initiative) ? 1 : 0); });
     await game.combat.update();
     await game.combat.nextTurn();
-    
+
     await ChatMessage.create({
       content: `${combatant.token.name} is acting now.`,
       speaker:
@@ -95,19 +106,16 @@ class PopcornViewer extends Application {
         alias: "Game: "
       }
     });
-    // await game.socket.emit("module.Popcorn", { "hasActed": true }); 
   }
 
   async _onClickNextRound() {
-    // these calls are safe since only the DM can click this button
     await this.resetInitiative();
-    await this.getInterruptHandler().clearFlags();
     game.combat.nextRound();
     ChatMessage.create({ content: "Starting a new Round.", speaker: { alias: "Game: " } })
   }
 
   async _onClickEndCombat() {
-    // these calls are safe since only the DM can click this button
+    // these calls are safe since only the DM can click this button 
     await this.resetInitiative();
     await this.getInterruptHandler().clearFlags();
     game.combat.endCombat();
@@ -117,10 +125,13 @@ class PopcornViewer extends Application {
   async _onClickInterrupt(event) {
     const tokenId = event.target.id;
     let combatant = game.combat.getCombatantByToken(tokenId);
-    await this.getInterruptHandler().registerInterrupt(combatant);
-    await this.render(false);
+    game.socket.emit("module.Popcorn", { "combatantId": combatant.id });
   }
 
+  async _onRegisterInterrupt(data) {
+    await this.getInterruptHandler().registerInterrupt(data.combatantId);
+    game.socket.emit("module.Popcorn");
+  }
   async resetInitiative() {
     let combatants = game.combat.combatants.filter(c => c.name != "Placeholder");
     for (let c of combatants) {
@@ -161,13 +172,13 @@ class PopcornViewer extends Application {
 
   getData() {
     let content = { content: `${this.preparePopcorn()}` }
-    //console.log(`getData hit: ${++this.timesGetDataHit}`); 
+    //console.log(`getData hit: ${++this.timesGetDataHit}`);  
     return content;
   }
 
   preparePopcorn() {
-    //console.log("PreparePopcorn called"); 
-    //Get a list of the active combatants 
+    //console.log("PreparePopcorn called");  
+    //Get a list of the active combatants  
     if (!game.combat.combatants.find(c => c.name == "Placeholder")) {
       const toCreate = [];
       toCreate.push({ actorId: this.id, hidden: true, name: "Placeholder" });
@@ -188,7 +199,7 @@ class PopcornViewer extends Application {
     var nominatedTime;
     var nominee;
 
-    // we're looping so we can assign multiple easily 
+    // we're looping so we can assign multiple easily  
     for (let c of game.combat.combatants) {
       nominatedTime = c.getFlag('world', 'nominatedTime');
       if (nominatedTime) {
@@ -199,18 +210,18 @@ class PopcornViewer extends Application {
 
     if (nominee) {
       let interruptTimeRemaining = Math.ceil(this.interruptWindowLength / 1000 - (Date.now() - nominatedTime) / 1000);
-      return `<h2>Current Nominee... Going in ${interruptTimeRemaining}</h2> 
-      <table border="1" cellspacing="0" cellpadding="4"> 
-      <tr> 
-        <td style="background: black; color: white;"/> 
-        <td style="background: black; color: white;">Character</td> 
-        <td style="background: black; color: white;">Init. Points</td> 
-      </tr> 
-      <tr> 
-        <td width="70"><img src="${nominee._token.actor.img}" width="50" height="50"></img></td> 
-        <td>${nominee._token.name}</td> 
-        <td>${nominee.getFlag('world', 'availableInterruptPoints')} / ${nominee.getFlag('world', 'interruptPoints')} 
-      </tr> 
+      return `<h2>Current Nominee... Going in ${interruptTimeRemaining}</h2>  
+      <table border="1" cellspacing="0" cellpadding="4">  
+      <tr>  
+        <td style="background: black; color: white;"/>  
+        <td style="background: black; color: white;">Character</td>  
+        <td style="background: black; color: white;">Init. Points</td>  
+      </tr>  
+      <tr>  
+        <td width="70"><img src="${nominee._token.actor.img}" width="50" height="50"></img></td>  
+        <td>${nominee._token.name}</td>  
+        <td>${nominee.getFlag('world', 'availableInterruptPoints')} / ${nominee.getFlag('world', 'interruptPoints')}  
+      </tr>  
       </table>`;
     }
     else { return ``; }
@@ -218,31 +229,31 @@ class PopcornViewer extends Application {
   }
   prepareCurrentTurn() {
     let currentCombatant = game.combat.combatants.get(game.combat.current.combatantId);
-    return `<h2>Current Turn</h2> 
-      <table border="1" cellspacing="0" cellpadding="4"> 
-      <tr> 
-        <td style="background: black; color: white;"/> 
-        <td style="background: black; color: white;">Character</td> 
-        <td style="background: black; color: white;">Init. Points</td> 
-      </tr> 
-      <tr> 
-        <td width="70"><img src="${currentCombatant._token.actor.img}" width="50" height="50"></img></td> 
-        <td>${currentCombatant._token.name}</td> 
-        <td>${currentCombatant.getFlag('world', 'availableInterruptPoints')} / ${currentCombatant.getFlag('world', 'interruptPoints')} 
+    return `<h2>Current Turn</h2>  
+      <table border="1" cellspacing="0" cellpadding="4">  
+      <tr>  
+        <td style="background: black; color: white;"/>  
+        <td style="background: black; color: white;">Character</td>  
+        <td style="background: black; color: white;">Init. Points</td>  
+      </tr>  
+      <tr>  
+        <td width="70"><img src="${currentCombatant._token.actor.img}" width="50" height="50"></img></td>  
+        <td>${currentCombatant._token.name}</td>  
+        <td>${currentCombatant.getFlag('world', 'availableInterruptPoints')} / ${currentCombatant.getFlag('world', 'interruptPoints')}  
       </tr>`;
   }
   prepareRemainingCombatants() {
     var combatants = game.combat.combatants;
     var viewer = viewer;
 
-    //Create a header row 
+    //Create a header row  
     let rows =
-      [`<h2>Remaining Combatants</h2> 
-      <tr> 
-          <td style="background: black; color: white;"/> 
-          <td style="background: black; color: white;">Character</td> 
-          <td style="background: black; color: white;">Init. Points</td> 
-          <td style="background: black; color: white;">${this.interruptCycleInProgress ? "Interrupt?" : "Nominate?"}</td> 
+      [`<h2>Remaining Combatants</h2>  
+      <tr>  
+          <td style="background: black; color: white;"/>  
+          <td style="background: black; color: white;">Character</td>  
+          <td style="background: black; color: white;">Init. Points</td>  
+          <td style="background: black; color: white;">${this.interruptCycleInProgress ? "Interrupt?" : "Nominate?"}</td>  
       </tr>`];
 
     let currentCombatant = game.combat.combatants.get(game.combat.current.combatantId);
@@ -266,12 +277,12 @@ class PopcornViewer extends Application {
     return myContents;
   }
 
-  // This function prepares the contents of the popcorn initiative viewer 
-  // Display the current Round number 
-  // Display the actor icon of each combatant for which hasActed is false or undefined. 
-  // Display the name of each combatant for which hasActed is false or undefined. 
-  // Display a button that says 'Nominate' 
-  // At the end of the display of buttons etc. display a button that says 'next Round'. 
+  // This function prepares the contents of the popcorn initiative viewer  
+  // Display the current Round number  
+  // Display the actor icon of each combatant for which hasActed is false or undefined.  
+  // Display the name of each combatant for which hasActed is false or undefined.  
+  // Display a button that says 'Nominate'  
+  // At the end of the display of buttons etc. display a button that says 'next Round'.  
 
   prepareCombatant(combatant, rows, canNominate, userCombatant) {
     let foundToken = combatant.token;
@@ -281,25 +292,25 @@ class PopcornViewer extends Application {
     }
 
     let canInterrupt = game.user.isGM || userCombatant.actor.id == combatant.actor.id;
-    let isInterrupting = combatant.getFlag('world','attemptingInterrupt') ? true : false;
+    let isInterrupting = combatant.getFlag('world', 'attemptingInterrupt') ? true : false;
     let isCurrentCombatant = combatant.id == game.combat.current.combatantId;
     let canAct = canNominate || (this.interruptCycleInProgress && canInterrupt);
     let disabledString = !canAct || isInterrupting ? "disabled" : "";
-    let buttonText = this.interruptCycleInProgress ? (isInterrupting ? "Pending": "Interrupt"): "Nominate";
+    let buttonText = this.interruptCycleInProgress ? (isInterrupting ? "Pending" : "Interrupt") : "Nominate";
 
     if (
       (combatant.initiative == 0 && !isCurrentCombatant) || game.combat.current.turn == 0) {
-      let addString = `
-        <tr>
-          <td width="70"><img src="${foundToken.actor.img}" width="50" height="50"></img></td>
-          <td>${foundToken.name}</td>
-          <td>${combatant.getFlag('world', 'availableInterruptPoints')} / ${combatant.getFlag('world', 'interruptPoints')}
-          <td>
-            <button type="button" id="${foundToken.id}" 
-              name="${this.interruptCycleInProgress ? "interrupt": "nominate"}" 
-              onclick='' ${disabledString}>${buttonText}
-            </button>
-        </td>
+      let addString = ` 
+        <tr> 
+          <td width="70"><img src="${foundToken.actor.img}" width="50" height="50"></img></td> 
+          <td>${foundToken.name}</td> 
+          <td>${combatant.getFlag('world', 'availableInterruptPoints')} / ${combatant.getFlag('world', 'interruptPoints')} 
+          <td> 
+            <button type="button" id="${foundToken.id}"  
+              name="${this.interruptCycleInProgress ? "interrupt" : "nominate"}"  
+              onclick='' ${disabledString}>${buttonText} 
+            </button> 
+        </td> 
       </tr>`;
 
       rows.push(addString);
@@ -326,12 +337,12 @@ class PopcornViewer extends Application {
 
 export { PopcornViewer };
 
+Hooks.on('createCombatant', function (combatant) { PopcornViewer.onCreateCombatant(combatant) });
+Hooks.on('updateCombatant', function (combatant) { game.system.popcorn.onUpdateCombatant(combatant) });
+
 Hooks.on('getSceneControlButtons', function (hudButtons) {
   PopcornViewer.prepareButtons(hudButtons);
 })
-
-if(!game.system.popcorn)
-  game.system.popcorn = new PopcornViewer();
 
 Hooks.on('renderCombatTracker', () => {
   if (game.system.popcorn != undefined) setTimeout(function () { game.system.popcorn.render(false); });
@@ -341,6 +352,3 @@ Hooks.on('updateToken', (scene, token, data) => {
     if (game.system.popcorn != undefined) setTimeout(function () { game.system.popcorn.render(false); });
   }
 })
-
-Hooks.on('createCombatant', function (combatant) { PopcornViewer.onCreateCombatant(combatant) });
-Hooks.on('updateCombatant', function (combatant) { game.system.popcorn.onUpdateCombatant(combatant) });
