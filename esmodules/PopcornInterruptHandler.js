@@ -31,9 +31,8 @@ class PopcornInterruptHandler extends Application {
         await combatant.update(); 
     } 
  
-    resolveInterrupt() { 
-        // TODO: Handle damage interrupts 
- 
+    async resolveInterrupt() { 
+        // TODO: Handle damage interrupts  
         let interrupters = this.getAttemptedInterrupters(); 
         
         if (interrupters.length == 0) 
@@ -42,15 +41,40 @@ class PopcornInterruptHandler extends Application {
         let mostDisruptive = (interrupters.sort(this.sortInterrupters))[0]; 
  
         if (mostDisruptive.getFlag('world', 'availableInterruptPoints') > this.nomineeCombatant.getFlag('world', 'availableInterruptPoints')) { 
+            await ChatMessage.create({ 
+                content: `${mostDisruptive.name} wins with ${mostDisruptive.getFlag('world', 'availableInterruptPoints')} interrupt points (Nominee has ${this.nomineeCombatant.getFlag('world', 'availableInterruptPoints')}).`, 
+                speaker: 
+                { 
+                    alias: "Game: " 
+                }
+ 
+            }); 
             return mostDisruptive; 
         } 
         else { 
- 
-            if (mostDisruptive._token._actor.data.data.abilities.dex.mod > this.nomineeCombatant._token._actor.data.data.abilities.dex.mod) { 
+            let contestingDexMod = mostDisruptive._token._actor.data.data.abilities.dex.mod;
+            let nomineeDexMod = this.nomineeCombatant._token._actor.data.data.abilities.dex.mod;
+            if (contestingDexMod > nomineeDexMod) { 
+                await ChatMessage.create({ 
+                    content: `Initiative points match: ${mostDisruptive.name} wins by Dex Mod.`, 
+                    speaker: 
+                    { 
+                        alias: "Game: " 
+                    }
+     
+                }); 
                 return mostDisruptive; 
             } 
-            else if (mostDisruptive._token._actor.data.data.abilities.dex.mod == this.nomineeCombatant._token._actor.data.data.abilities.dex.mod) { 
-                return this.resolveRolloff(mostDisruptive, this.nomineeCombatant); 
+            else if (nomineeDexMod == contestingDexMod) {                 
+                let rolloff = this.resolveRolloff(mostDisruptive, this.nomineeCombatant); 
+                await ChatMessage.create({ 
+                    content: `Initiative points and Dex Mod match: ${rolloff.winner.name} wins by rolloff (${this.nomineeCombatant.name}: ${rolloff.nomineeRoll}, ${mostDisruptive.name}: ${rolloff.contestingRoll}).`, 
+                    speaker: 
+                    { 
+                        alias: "Game: " 
+                    }     
+                }); 
+                return rolloff.winner;
             } 
  
             return this.nomineeCombatant; 
@@ -67,9 +91,24 @@ class PopcornInterruptHandler extends Application {
             aPoints > bPoints) ? -1 : ((bPoints > aPoints) ? 1 : 0); 
     } 
  
+    static getRandomInt(max) {
+        return Math.floor(Math.random() * max);
+    }
+
     resolveRolloff(mostDisruptive, nominee) { 
         // TBD: Figure out how to have a rolloff 
-        return nominee; 
+        var nomineeRoll;
+        var contestingRoll;
+        do {
+            nomineeRoll = PopcornInterruptHandler.getRandomInt(20)+1;
+            contestingRoll = PopcornInterruptHandler.getRandomInt(20)+1;
+        } while (nomineeRoll == contestingRoll);
+
+        return {
+            winner: nomineeRoll >= contestingRoll ? nominee : mostDisruptive,
+            nomineeRoll: nomineeRoll,
+            contestingRoll: contestingRoll
+        }; 
     } 
  
     async clearFlags() { 
