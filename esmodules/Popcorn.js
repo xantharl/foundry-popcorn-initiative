@@ -2,7 +2,7 @@ import { PopcornInterruptHandler } from "./PopcornInterruptHandler.js";
 
 class PopcornViewer extends Application {
   timesGetDataHit = 0;
-  interruptWindowLength = 5000;
+  interruptWindowLength = 10000;
   interruptCycleInProgress = false;
   interruptHandler;
 
@@ -260,7 +260,7 @@ class PopcornViewer extends Application {
     let canNominate = game.user.isGM;
     let userCombatant;
     if (!game.user.isGM && game.user.character) {
-      userCombatant = game.combat.combatants.find(c => c.actor.id == game.user.character.id);
+      userCombatant = game.combat.combatants.find(c => c.actor && c.actor.id == game.user.character.id);
       canNominate = userCombatant && currentCombatant.actor && currentCombatant.actor.id == userCombatant.actor.id;
     }
 
@@ -344,7 +344,7 @@ class PopcornViewer extends Application {
 
 export { PopcornViewer };
 
-Hooks.on('createCombatant', function (combatant) { PopcornViewer.onCreateCombatant(combatant) });
+Hooks.on('createCombatant', function (combatant) { PopcornViewer.onCreateCombatant(combatant).then() });
 Hooks.on('updateCombatant', function (combatant) { game.system.popcorn.onUpdateCombatant(combatant) });
 
 Hooks.on('getSceneControlButtons', function (hudButtons) {
