@@ -191,6 +191,8 @@ class PopcornViewer extends Application {
       if (game.combat.current.turn > 0) {
         contents += this.prepareCurrentTurn();
       }
+      if(!user.isGM)
+        contents += this.preparePlayerCharacter();
       contents += this.prepareRemainingCombatants();
       return contents;
     } else { return "<h1>No Conflicts Detected!</h1>" }
@@ -242,13 +244,23 @@ class PopcornViewer extends Application {
         <td>${currentCombatant.getFlag('world', 'availableInterruptPoints')} / ${currentCombatant.getFlag('world', 'interruptPoints')}  
       </tr>`;
   }
+
+  preparePlayerCharacter() {
+    var combatants = game.combat.combatants.filter(c => c.isOwner);
+    return this.prepareCombatantContents(combatants, 'My Character', false)
+  }
+
   prepareRemainingCombatants() {
-    var combatants = game.combat.combatants;
+    var combatants = game.combat.combatants.filter(c => !c.isOwner);
+    return this.prepareCombatantContents(combatants, 'Remaining Combatants', true)
+  }
+
+  prepareCombatantContents(combatants, title, hide_if_gone) {
     var viewer = viewer;
 
     //Create a header row  
     let rows =
-      [`<h2>Remaining Combatants</h2>  
+      [`<h2>${title}</h2>  
       <tr>  
           <td style="background: black; color: white;"/>  
           <td style="background: black; color: white;">Character</td>  
@@ -264,7 +276,7 @@ class PopcornViewer extends Application {
       canNominate = userCombatant && currentCombatant.actor && currentCombatant.actor.id == userCombatant.actor.id;
     }
 
-    combatants.filter(c => !c.getFlag('world', 'nominatedTime'))
+    combatants.filter(c => !c.getFlag('world', 'nominatedTime') || !hide_if_gone)
       .forEach(c => this.prepareCombatant(c, rows, canNominate, userCombatant));
 
     let myContents = `<table border="1" cellspacing="0" cellpadding="4">`;
