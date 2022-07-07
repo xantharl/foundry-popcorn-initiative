@@ -11,11 +11,12 @@ class PopcornInterruptHandler extends Application {
         var nomineePoints; 
  
         interrupterPoints = combatant.getFlag('world', 'availableInterruptPoints'); 
-        nomineePoints = this.nomineeCombatant.getFlag('world', 'availableInterruptPoints'); 
- 
+        nomineePoints = this.nomineeCombatant.getFlag('world', 'availableInterruptPoints');  
+        interrupterHasTakenDamage = combatant.getFlag('world', 'hasTakenDamage') ?? false; 
+
         // TODO: Don't allow interrupt of PC by PC 
  
-        if (interrupterPoints < nomineePoints) { 
+        if (interrupterPoints < nomineePoints && !interrupterHasTakenDamage) { 
             await ChatMessage.create({ 
                 content: `${combatant.token.name} does not have enough points to interrupt.`, 
                 speaker: 
@@ -50,7 +51,7 @@ class PopcornInterruptHandler extends Application {
  
             });              
         } 
-        if (mostDisruptive.getFlag('world', 'availableInterruptPoints') > this.nomineeCombatant.getFlag('world', 'availableInterruptPoints')) { 
+        else if (mostDisruptive.getFlag('world', 'availableInterruptPoints') > this.nomineeCombatant.getFlag('world', 'availableInterruptPoints')) { 
             await ChatMessage.create({ 
                 content: `${mostDisruptive.name} wins with ${mostDisruptive.getFlag('world', 'availableInterruptPoints')} interrupt points (Nominee has ${this.nomineeCombatant.getFlag('world', 'availableInterruptPoints')}).`, 
                 speaker: 
