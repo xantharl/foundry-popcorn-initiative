@@ -344,7 +344,7 @@ class PopcornViewer extends Application {
   }
 
   static hasAlert(actor){
-    return actor.items.filter(i => i.type == "feat" && i.name == "Alert").length > 0;
+    return actor.items.filter(i => i.type == "feat" && ["Alert", "Temporal Awareness"].includes(i.name)).length > 0;
   }
 
   static async initInterruptPoints(combatant) {
@@ -361,12 +361,12 @@ class PopcornViewer extends Application {
 
 export { PopcornViewer };
 
-Hooks.on('createCombatant', function (combatant) { PopcornViewer.onCreateCombatant(combatant).then() });
-Hooks.on('updateCombatant', function (combatant) { game.system.popcorn.onUpdateCombatant(combatant) });
-
 Hooks.on('getSceneControlButtons', function (hudButtons) {
   PopcornViewer.prepareButtons(hudButtons);
 })
+
+Hooks.on('createCombatant', function (combatant) { PopcornViewer.onCreateCombatant(combatant).then() });
+Hooks.on('updateCombatant', function (combatant) { game.system.popcorn.onUpdateCombatant(combatant) });
 
 Hooks.on('renderCombatTracker', () => {
   if (game.system.popcorn != undefined) setTimeout(function () { game.system.popcorn.render(false); });
