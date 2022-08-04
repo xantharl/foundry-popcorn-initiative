@@ -220,8 +220,8 @@ class PopcornViewer extends Application {
         <td style="background: black; color: white;">Init. Points</td>  
       </tr>  
       <tr>  
-        <td width="70"><img src="${nominee._token.actor.img}" width="50" height="50"></img></td>  
-        <td>${nominee._token.name}</td>  
+        <td width="70"><img src="${nominee.token.actor.img}" width="50" height="50"></img></td>  
+        <td>${nominee.token.name}</td>  
         <td>${nominee.getFlag('world', 'availableInterruptPoints')} / ${nominee.getFlag('world', 'interruptPoints')}  
       </tr>  
       </table>`;
@@ -239,8 +239,8 @@ class PopcornViewer extends Application {
         <td style="background: black; color: white;">Init. Points</td>  
       </tr>  
       <tr>  
-        <td width="70"><img src="${currentCombatant._token.actor.img}" width="50" height="50"></img></td>  
-        <td>${currentCombatant._token.name}</td>  
+        <td width="70"><img src="${currentCombatant.token.actor.img}" width="50" height="50"></img></td>  
+        <td>${currentCombatant.token.name}</td>  
         <td>${currentCombatant.getFlag('world', 'availableInterruptPoints')} / ${currentCombatant.getFlag('world', 'interruptPoints')}  
       </tr>`;
   }
@@ -348,14 +348,14 @@ class PopcornViewer extends Application {
   }
 
   static async initInterruptPoints(combatant) {
-    let actor = combatant._token._actor;
+    let actor = combatant.token.actor;
     let hasAlert = PopcornViewer.hasAlert(actor);
 
     await combatant.setFlag('world', 'interruptPoints',
       Math.max(actor.data.data.abilities.dex.mod + (hasAlert ? 5 : 0), 1));
 
     await combatant.setFlag('world', 'availableInterruptPoints',
-      Math.max(combatant._token._actor.data.data.abilities.dex.mod + (hasAlert ? 5 : 0), 1));
+      Math.max(combatant.token.actor.data.data.abilities.dex.mod + (hasAlert ? 5 : 0), 1));
   }
 }
 

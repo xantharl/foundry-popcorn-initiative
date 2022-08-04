@@ -52,8 +52,8 @@ class PopcornInterruptHandler extends Application {
             return mostDisruptive; 
         } 
         else { 
-            let contestingDexMod = mostDisruptive._token._actor.data.data.abilities.dex.mod;
-            let nomineeDexMod = this.nomineeCombatant._token._actor.data.data.abilities.dex.mod;
+            let contestingDexMod = mostDisruptive.token.actor.data.data.abilities.dex.mod;
+            let nomineeDexMod = this.nomineeCombatant.token.actor.data.data.abilities.dex.mod;
             if (contestingDexMod > nomineeDexMod) { 
                 await ChatMessage.create({ 
                     content: `Initiative points match: ${mostDisruptive.name} wins by Dex Mod.`, 
