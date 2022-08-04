@@ -1,10 +1,12 @@
 {
   "title": "Popcorn",
+  "name": "Popcorn",
   "description": "A small module that creates a pop-out window for running games that use popcorn/elective action order initiative.",
   "esmodules": [
     "esmodules/Popcorn.js",
     "esmodules/PopcornInterruptHandler.js",
-    "esmodules/PopcornActor.js"
+    "esmodules/PopcornActor.js",
+    "esmodules/PopcornCombat.js"
   ],
   "version": "0.0.2",
   "socket": true,
