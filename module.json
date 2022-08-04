@@ -11,7 +11,10 @@
   "download": "https://github.com/xantharl/foundry-popcorn-initiative/archive/refs/tags/0.0.2.zip",
   "manifest": "https://raw.githubusercontent.com/xantharl/foundry-popcorn-initiative/temp/module.json",
   "id": "popcorn",
-	"compatibleCoreVersion": "9",
+  "compatibility": {
+    "minimum": "9",
+    "verified": "10"
+  },
   "authors": [
     {
       "name": "Xantharl",
