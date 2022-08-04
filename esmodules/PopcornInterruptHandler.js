@@ -33,13 +33,23 @@ class PopcornInterruptHandler extends Application {
  
     async resolveInterrupt() { 
         // TODO: Handle damage interrupts  
-        let interrupters = this.getAttemptedInterrupters(); 
-        
+        let interrupters = this.getAttemptedInterrupters();
+
         if (interrupters.length == 0) 
             return this.nomineeCombatant; 
  
         let mostDisruptive = (interrupters.sort(this.sortInterrupters))[0]; 
+
+        if (mostDisruptive.getFlag('world', 'hasTakenDamage') && !this.nomineeCombatant.getFlag('world', 'hasTakenDamage')) { 
+            await ChatMessage.create({ 
+                content: `${mostDisruptive.name} wins by damage interrupt.`, 
+                speaker: 
+                { 
+                    alias: "Game: " 
+                }
  
+            });              
+        } 
         if (mostDisruptive.getFlag('world', 'availableInterruptPoints') > this.nomineeCombatant.getFlag('world', 'availableInterruptPoints')) { 
             await ChatMessage.create({ 
                 content: `${mostDisruptive.name} wins with ${mostDisruptive.getFlag('world', 'availableInterruptPoints')} interrupt points (Nominee has ${this.nomineeCombatant.getFlag('world', 'availableInterruptPoints')}).`, 
@@ -48,8 +58,7 @@ class PopcornInterruptHandler extends Application {
                     alias: "Game: " 
                 }
  
-            }); 
-            return mostDisruptive; 
+            });              
         } 
         else { 
             let contestingDexMod = mostDisruptive.token.actor.data.data.abilities.dex.mod;
@@ -63,7 +72,6 @@ class PopcornInterruptHandler extends Application {
                     }
      
                 }); 
-                return mostDisruptive; 
             } 
             else if (nomineeDexMod == contestingDexMod) {                 
                 let rolloff = this.resolveRolloff(mostDisruptive, this.nomineeCombatant); 
@@ -74,17 +82,31 @@ class PopcornInterruptHandler extends Application {
                         alias: "Game: " 
                     }     
                 }); 
-                return rolloff.winner;
+                mostDisruptive = rolloff.winner;
             } 
  
-            return this.nomineeCombatant; 
-        } 
+            mostDisruptive = this.nomineeCombatant; 
+        }             
+        
+        // clear the current turn's damage taken statuses so they can't damage steal
+        for (combatant in game.combat.combatants) {
+            if (combatant.actor.getFlag('world', 'hasTakenDamage')) {
+                combatant.actor.unsetFlag('world', 'hasTakenDamage')
+            }
+        }
+
+        return mostDisruptive;
     } 
     getAttemptedInterrupters(){ 
         return game.combat.combatants.filter(c => c.getFlag('world', 'attemptingInterrupt')); 
     } 
  
     sortInterrupters(a, b) { 
+        let aHasTakenDamage = a.getFlag('world', 'hasTakenDamage'); 
+        let bHasTakenDamage = b.getFlag('world', 'hasTakenDamage'); 
+        if (aHasTakenDamage ^ bHasTakenDamage)
+            return aHasTakenDamage > bHasTakenDamage
+
         let aPoints = a.getFlag('world', 'availableInterruptPoints'); 
         let bPoints = b.getFlag('world', 'availableInterruptPoints'); 
         return ( 

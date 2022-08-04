@@ -43,13 +43,10 @@ class PopcornViewer extends Application {
     return game.system.popcorn.interruptHandler;
   }
   async _onClickNominate(event) {
-    //console.log("Event target id "+event.target.id);  
-
     const tokenId = event.target.id;
-    let combatant = game.combat.getCombatantByToken(tokenId);
-
-    await combatant.setFlag('world', 'nominatedTime', Date.now());
-    await combatant.update();
+    let nominee = game.combat.getCombatantByToken(tokenId);
+    await nominee.setFlag('world', 'nominatedTime', Date.now());
+    await nominee.update();
   }
 
   async onUpdateCombatant(combatant) {
@@ -308,12 +305,15 @@ class PopcornViewer extends Application {
       return;
     }
 
-    let canInterrupt = game.user.isGM || (userCombatant && userCombatant.actor.id == combatant.actor.id);
+    let hasTakenDamage = userCombatant?.actor.getFlag('world', 'hasTakenDamage')
+    let canInterrupt = game.user.isGM || 
+      (userCombatant && 
+        (userCombatant.actor.id == combatant.actor.id || hasTakenDamage));
     let isInterrupting = combatant.getFlag('world', 'attemptingInterrupt') ? true : false;
     let isCurrentCombatant = combatant.id == game.combat.current.combatantId;
     let canAct = canNominate || (this.interruptCycleInProgress && canInterrupt);
     let disabledString = !canAct || isInterrupting ? "disabled" : "";
-    let buttonText = this.interruptCycleInProgress ? (isInterrupting ? "Pending" : "Interrupt") : "Nominate";
+    let buttonText = this.interruptCycleInProgress ? (isInterrupting ? "Pending" : (hasTakenDamage ? "Damaged!" : "Interrupt")) : "Nominate";
 
     if (
       (combatant.initiative == 0 && !isCurrentCombatant) || game.combat.current.turn == 0) {
@@ -357,6 +357,15 @@ class PopcornViewer extends Application {
     await combatant.setFlag('world', 'availableInterruptPoints',
       Math.max(combatant.token.actor.data.data.abilities.dex.mod + (hasAlert ? 5 : 0), 1));
   }
+
+  static async onPreUpdateActor(changed, options, userId) {
+    // Determine the next turn number
+    let new_hp = options.data.attributes.hp;
+    let prev_hp = changed.data.data.attributes.hp.value;
+    if (new_hp < prev_hp){
+      await changed.setFlag('world', 'hasTakenDamage', true);
+    }
+  }
 }
 
 export { PopcornViewer };
@@ -367,6 +376,7 @@ Hooks.on('getSceneControlButtons', function (hudButtons) {
 
 Hooks.on('createCombatant', function (combatant) { PopcornViewer.onCreateCombatant(combatant).then() });
 Hooks.on('updateCombatant', function (combatant) { game.system.popcorn.onUpdateCombatant(combatant) });
+Hooks.on('preUpdateActor', function (changed, options, userId) { PopcornViewer.onPreUpdateActor(changed, options, userId).then() });
 
 Hooks.on('renderCombatTracker', () => {
   if (game.system.popcorn != undefined) setTimeout(function () { game.system.popcorn.render(false); });
