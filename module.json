@@ -6,13 +6,12 @@
     "esmodules/PopcornInterruptHandler.js",
     "esmodules/PopcornActor.js"
   ],
-  "version": "0.0.1",
+  "version": "0.0.2",
   "socket": true,
   "download": "https://github.com/xantharl/foundry-popcorn-initiative/archive/refs/tags/0.0.2.zip",
   "manifest": "https://raw.githubusercontent.com/xantharl/foundry-popcorn-initiative/temp/module.json",
   "id": "popcorn",
-	"minimumCoreVersion": "0.6.5",
-	"compatibleCoreVersion": "10",
+	"compatibleCoreVersion": "9",
   "authors": [
     {
       "name": "Xantharl",
