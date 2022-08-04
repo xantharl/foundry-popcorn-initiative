@@ -72,8 +72,8 @@ class PopcornViewer extends Application {
     let waited = 0;
     while (waited < this.interruptWindowLength) {
       this.render(false);
-      await this.sleep(500);
-      waited += 500;
+      await this.sleep(50);
+      waited += 50;
     }
     // Let Server handle resolution so we don't attempt multiple writes  
     if (game.user.isGM) {

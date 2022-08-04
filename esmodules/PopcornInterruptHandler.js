@@ -85,8 +85,8 @@ class PopcornInterruptHandler extends Application {
     } 
  
     sortInterrupters(a, b) { 
-        aPoints = a.getFlag('world', 'availableInterruptPoints'); 
-        bPoints = b.getFlag('world', 'availableInterruptPoints'); 
+        let aPoints = a.getFlag('world', 'availableInterruptPoints'); 
+        let bPoints = b.getFlag('world', 'availableInterruptPoints'); 
         return ( 
             aPoints > bPoints) ? -1 : ((bPoints > aPoints) ? 1 : 0); 
     } 
