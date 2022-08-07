@@ -1,0 +1,1 @@
+Copy-Item -Path "C:\FoundryData\Data\modules\popcorn\esmodules\*.js" -Destination "C:\repos\foundry-popcorn-initiative\esmodules" -Force
