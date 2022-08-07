@@ -7,15 +7,15 @@ class PopcornInterruptHandler extends Application {
     } 
  
     async registerInterrupt(combatant) { 
-        var interrupterPoints; 
-        var nomineePoints; 
  
-        interrupterPoints = combatant.getFlag('world', 'availableInterruptPoints'); 
-        nomineePoints = this.nomineeCombatant.getFlag('world', 'availableInterruptPoints'); 
+        let interrupterPoints = combatant.getFlag('world', 'availableInterruptPoints'); 
+        let nomineePoints = this.nomineeCombatant.getFlag('world', 'availableInterruptPoints'); 
+        let interrupterHasTakenDamage = combatant.actor.getFlag('world', 'hasTakenDamage'); 
+        interrupterHasTakenDamage ??= false;
  
         // TODO: Don't allow interrupt of PC by PC 
  
-        if (interrupterPoints < nomineePoints) { 
+        if (!interrupterHasTakenDamage && interrupterPoints < nomineePoints) { 
             await ChatMessage.create({ 
                 content: `${combatant.token.name} does not have enough points to interrupt.`, 
                 speaker: 
@@ -40,7 +40,7 @@ class PopcornInterruptHandler extends Application {
  
         let mostDisruptive = (interrupters.sort(this.sortInterrupters))[0]; 
 
-        if (mostDisruptive.getFlag('world', 'hasTakenDamage') && !this.nomineeCombatant.getFlag('world', 'hasTakenDamage')) { 
+        if (mostDisruptive.actor.getFlag('world', 'hasTakenDamage') && !this.nomineeCombatant.actor.getFlag('world', 'hasTakenDamage')) { 
             await ChatMessage.create({ 
                 content: `${mostDisruptive.name} wins by damage interrupt.`, 
                 speaker: 
@@ -102,8 +102,8 @@ class PopcornInterruptHandler extends Application {
     } 
  
     sortInterrupters(a, b) { 
-        let aHasTakenDamage = a.getFlag('world', 'hasTakenDamage'); 
-        let bHasTakenDamage = b.getFlag('world', 'hasTakenDamage'); 
+        let aHasTakenDamage = a.actor.getFlag('world', 'hasTakenDamage'); 
+        let bHasTakenDamage = b.actor.getFlag('world', 'hasTakenDamage'); 
         if (aHasTakenDamage ^ bHasTakenDamage)
             return aHasTakenDamage > bHasTakenDamage
 

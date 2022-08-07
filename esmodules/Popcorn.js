@@ -8,15 +8,9 @@ class PopcornViewer extends Application {
 
   constructor(options){
     super(options);
-    if (game.user.isGM) {
-      // game.socket.on("module.Popcorn.RegisterInterrupt", this._onRegisterInterrupt);
-      game.socket.on('module.Popcorn', PopcornViewer._onRegisterInterrupt);
-
-    }
-    
-    game.socket.on("connect", (data) => {
-      console.log(`Connected wooooo: ${data}`);
-    });
+    // if (game.user.isGM) {
+    //   game.socket.on('module.Popcorn', PopcornViewer._onRegisterInterrupt);
+    // }
   }
 
   activateListeners(html) {
@@ -69,8 +63,8 @@ class PopcornViewer extends Application {
     let waited = 0;
     while (waited < this.interruptWindowLength) {
       this.render(false);
-      await this.sleep(50);
-      waited += 50;
+      await this.sleep(1000);
+      waited += 1000;
     }
     // Let Server handle resolution so we don't attempt multiple writes  
     if (game.user.isGM) {
@@ -111,6 +105,7 @@ class PopcornViewer extends Application {
 
   async _onClickNextRound() {
     await this.resetInitiative();
+    await this.getInterruptHandler().clearFlags();
     game.combat.nextRound();
     ChatMessage.create({ content: "Starting a new Round.", speaker: { alias: "Game: " } })
   }
@@ -137,6 +132,19 @@ class PopcornViewer extends Application {
       await c.update({ initiative: this.initiative });
     }
   }
+  static getDefaultViewer(){
+    let opt = Dialog.defaultOptions;
+    opt.resizable = true;
+    opt.title = "Popcorn Initiative Tracker";
+    opt.width = 400;
+    opt.height = 500;
+    opt.minimizable = true;
+
+    var viewer;
+    viewer = new PopcornViewer(opt);
+    return viewer;
+  }
+
   static prepareButtons(hudButtons) {
     let hud = hudButtons.find(val => { return val.name == "token"; })
 
@@ -146,8 +154,6 @@ class PopcornViewer extends Application {
         title: "Pop-out popcorn initiative tracker",
         icon: "fas fa-bolt",
         onClick: () => {
-          const delay = 200;
-
           let opt = Dialog.defaultOptions;
           opt.resizable = true;
           opt.title = "Popcorn Initiative Tracker";
@@ -155,8 +161,7 @@ class PopcornViewer extends Application {
           opt.height = 500;
           opt.minimizable = true;
 
-          var viewer;
-          viewer = new PopcornViewer(opt);
+          let viewer = PopcornViewer.getDefaultViewer();
           viewer.render(true);
 
           game.system.popcorn = viewer;
@@ -335,6 +340,7 @@ class PopcornViewer extends Application {
   }
 
   static async onCreateCombatant(combatant) {
+    if (!game.user.isGM) return
     if (combatant.name == "Placeholder") {
       await game.combat.setInitiative(combatant.id, 999);
     } else {
@@ -360,7 +366,7 @@ class PopcornViewer extends Application {
 
   static async onPreUpdateActor(changed, options, userId) {
     // Determine the next turn number
-    let new_hp = options.data.attributes.hp;
+    let new_hp = options.data?.attributes.hp.value;
     let prev_hp = changed.data.data.attributes.hp.value;
     if (new_hp < prev_hp){
       await changed.setFlag('world', 'hasTakenDamage', true);
@@ -369,6 +375,10 @@ class PopcornViewer extends Application {
 }
 
 export { PopcornViewer };
+
+Hooks.on('ready', function () {
+  game.system.popcorn = PopcornViewer.getDefaultViewer();
+})
 
 Hooks.on('getSceneControlButtons', function (hudButtons) {
   PopcornViewer.prepareButtons(hudButtons);
