@@ -11,7 +11,7 @@
   "version": "0.0.5",
   "socket": true,
   "download": "https://github.com/xantharl/foundry-popcorn-initiative/archive/refs/tags/0.0.9.zip",
-  "manifest": "https://raw.githubusercontent.com/xantharl/foundry-popcorn-initiative/temp/module.json",
+  "manifest": "https://raw.githubusercontent.com/xantharl/foundry-popcorn-initiative/master/module.json",
   "id": "popcorn",
   "compatibility": {
     "minimum": "9",
