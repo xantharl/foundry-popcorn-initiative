@@ -136,6 +136,7 @@ class PopcornInterruptHandler extends Application {
     async clearFlags() { 
         for (let c of game.combat.combatants) { 
             await c.unsetFlag('world', 'attemptingInterrupt'); 
+            await c.actor?.unsetFlag('world', 'hasTakenDamage'); 
             await c.update(); 
         } 
     } 

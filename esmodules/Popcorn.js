@@ -103,6 +103,7 @@ class PopcornViewer extends Application {
     });
   }
 
+  // No GM check needed since this button is only exposed to GM
   async _onClickNextRound() {
     await this.resetInitiative();
     await this.getInterruptHandler().clearFlags();
@@ -234,14 +235,20 @@ class PopcornViewer extends Application {
   prepareCurrentTurn() {
     let currentCombatant = game.combat.combatants.get(game.combat.current.combatantId);
     return `<h2>Current Turn</h2>  
-      <table border="1" cellspacing="0" cellpadding="4">  
+      <table border="1" cellspacing="0" cellpadding="2">  
       <tr>  
         <td style="background: black; color: white;"/>  
         <td style="background: black; color: white;">Character</td>  
         <td style="background: black; color: white;">Init. Points</td>  
       </tr>  
       <tr>  
-        <td width="70"><img src="${currentCombatant.token.actor.img}" width="50" height="50"></img></td>  
+        <td width="70">
+          <img 
+            src="${currentCombatant.token.actor.img}" 
+            width="40" 
+            height="40"
+            style="border: 0px"/>
+        </td>
         <td>${currentCombatant.token.name}</td>  
         <td>${currentCombatant.getFlag('world', 'availableInterruptPoints')} / ${currentCombatant.getFlag('world', 'interruptPoints')}  
       </tr>`;
@@ -286,7 +293,7 @@ class PopcornViewer extends Application {
     combatants.filter(c => !c.getFlag('world', 'nominatedTime'))
       .forEach(c => this.prepareCombatant(c, rows, canNominate, userCombatant));
 
-    let myContents = `<table border="1" cellspacing="0" cellpadding="4">`;
+    let myContents = `<table border="1" cellspacing="0" cellpadding="2">`;
     rows.forEach(element => myContents += element)
     myContents += "</table>"
     if (game.user.isGM) {
@@ -310,7 +317,7 @@ class PopcornViewer extends Application {
       return;
     }
 
-    let hasTakenDamage = userCombatant?.actor.getFlag('world', 'hasTakenDamage')
+    let hasTakenDamage = combatant?.actor.getFlag('world', 'hasTakenDamage')
     let canInterrupt = game.user.isGM || 
       (userCombatant && 
         (userCombatant.actor.id == combatant.actor.id || hasTakenDamage));
@@ -318,19 +325,39 @@ class PopcornViewer extends Application {
     let isCurrentCombatant = combatant.id == game.combat.current.combatantId;
     let canAct = canNominate || (this.interruptCycleInProgress && canInterrupt);
     let disabledString = !canAct || isInterrupting ? "disabled" : "";
-    let buttonText = this.interruptCycleInProgress ? (isInterrupting ? "Pending" : (hasTakenDamage ? "Damaged!" : "Interrupt")) : "Nominate";
+    var buttonText;
+    if (this.interruptCycleInProgress) {
+      if (isInterrupting) buttonText = "Pending"; 
+      else if (hasTakenDamage) buttonText = "Damaged!";
+      else buttonText = "Interrupt";
+    } 
+    else if (hasTakenDamage) buttonText = "Damaged!";
+    else {
+      buttonText = "Nominate"
+    }
+
+    let defaultColor = "f8f7ea"
+    let damagedColor = "ad443d"
 
     if (
       (combatant.initiative == 0 && !isCurrentCombatant) || game.combat.current.turn == 0) {
       let addString = ` 
         <tr> 
-          <td width="70"><img src="${foundToken.actor.img}" width="50" height="50"></img></td> 
+          <td width="70">
+          <img 
+            src="${foundToken.actor.img}" 
+            width="40" 
+            height="40"
+            style="border: 0px"/>
+          </td> 
           <td>${foundToken.name}</td> 
           <td>${combatant.getFlag('world', 'availableInterruptPoints')} / ${combatant.getFlag('world', 'interruptPoints')} 
           <td> 
             <button type="button" id="${foundToken.id}"  
               name="${this.interruptCycleInProgress ? "interrupt" : "nominate"}"  
-              onclick='' ${disabledString}>${buttonText} 
+              onclick='' ${disabledString}
+              style="background-color:${hasTakenDamage ? damagedColor: defaultColor}">
+                ${buttonText}               
             </button> 
         </td> 
       </tr>`;
