@@ -4,6 +4,8 @@ class PopcornInterruptHandler extends Application {
     constructor(nomineeCombatant) { 
         super(); 
         this.nomineeCombatant = nomineeCombatant; 
+        this.startTime = Date.now();
+        this.isConcluded = false;
     } 
  
     async registerInterrupt(combatant) { 
@@ -33,6 +35,7 @@ class PopcornInterruptHandler extends Application {
  
     async resolveInterrupt() { 
         // TODO: Handle damage interrupts  
+        this.isConcluded = true;
         let interrupters = this.getAttemptedInterrupters();
 
         if (interrupters.length == 0) 
@@ -71,7 +74,7 @@ class PopcornInterruptHandler extends Application {
                         alias: "Game: " 
                     }
      
-                }); 
+                });
             } 
             else if (nomineeDexMod == contestingDexMod) {                 
                 let rolloff = this.resolveRolloff(mostDisruptive, this.nomineeCombatant); 
@@ -83,9 +86,9 @@ class PopcornInterruptHandler extends Application {
                     }     
                 }); 
                 mostDisruptive = rolloff.winner;
-            } 
- 
-            mostDisruptive = this.nomineeCombatant; 
+            }
+            else 
+                mostDisruptive = this.nomineeCombatant; 
         }             
         
         // clear the current turn's damage taken statuses so they can't damage steal
@@ -94,7 +97,13 @@ class PopcornInterruptHandler extends Application {
                 combatant.actor.unsetFlag('world', 'hasTakenDamage')
             }
         }
-
+        if (mostDisruptive.id != this.nomineeCombatant.id) {
+            mostDisruptive.setFlag(
+                'world', 
+                'availableInterruptPoints',
+                Number(mostDisruptive.getFlag('world', 'availableInterruptPoints')) - 1
+            );
+        }
         return mostDisruptive;
     } 
     getAttemptedInterrupters(){ 
