@@ -18,7 +18,7 @@ class PopcornInterruptHandler extends Application {
         // TODO: Don't allow interrupt of PC by PC 
  
         if (!interrupterHasTakenDamage && interrupterPoints < nomineePoints) { 
-            await ChatMessage.create({ 
+            ChatMessage.create({ 
                 content: `${combatant.token.name} does not have enough points to interrupt.`, 
                 speaker: 
                 { 
@@ -27,6 +27,7 @@ class PopcornInterruptHandler extends Application {
                 whisper: [game.user.id] 
  
             }); 
+            return;
         } 
  
         await combatant.setFlag('world', 'attemptingInterrupt', true); 
@@ -66,15 +67,17 @@ class PopcornInterruptHandler extends Application {
         else { 
             let contestingDexMod = mostDisruptive.token.actor.data.data.abilities.dex.mod;
             let nomineeDexMod = this.nomineeCombatant.token.actor.data.data.abilities.dex.mod;
-            if (contestingDexMod > nomineeDexMod) { 
+            if (contestingDexMod != nomineeDexMod) { 
+                let winner = contestingDexMod > nomineeDexMod ? mostDisruptive : this.nomineeCombatant;
                 await ChatMessage.create({ 
-                    content: `Initiative points match: ${mostDisruptive.name} wins by Dex Mod.`, 
+                    content: `Initiative points match: ${winner.name} wins by Dex Mod.`, 
                     speaker: 
                     { 
                         alias: "Game: " 
                     }
      
                 });
+                return winner;
             } 
             else if (nomineeDexMod == contestingDexMod) {                 
                 let rolloff = this.resolveRolloff(mostDisruptive, this.nomineeCombatant); 
@@ -118,8 +121,15 @@ class PopcornInterruptHandler extends Application {
 
         let aPoints = a.getFlag('world', 'availableInterruptPoints'); 
         let bPoints = b.getFlag('world', 'availableInterruptPoints'); 
-        return ( 
-            aPoints > bPoints) ? -1 : ((bPoints > aPoints) ? 1 : 0); 
+
+        if (aPoints != bPoints)
+            return (aPoints > bPoints) ? -1 : ((bPoints > aPoints) ? 1 : 0); 
+        
+        let aDexMod = a.actor.data.data.abilities.dex.mod;
+        let bDexMod = b.actor.data.data.abilities.dex.mod;
+
+        if (aDexMod != bDexMod)
+            return aDexMod > bDexMod;
     } 
  
     static getRandomInt(max) {
@@ -143,8 +153,11 @@ class PopcornInterruptHandler extends Application {
     } 
  
     async clearFlags() { 
+        game.combat.unsetFlag('world', 'isInterruptCycleActive')
         for (let c of game.combat.combatants) { 
             await c.unsetFlag('world', 'attemptingInterrupt'); 
+            await c.unsetFlag('world', 'requestedNominee'); 
+            await c.unsetFlag('world', 'nominatedTime'); 
             await c.actor?.unsetFlag('world', 'hasTakenDamage'); 
             await c.update(); 
         } 

@@ -39,16 +39,18 @@ class PopcornViewer extends Application {
   }
   async _onClickNominate(event) {
     const tokenId = event.target.id;
-    let nominee = game.combat.getCombatantByToken(tokenId);
-    await nominee.setFlag('world', 'nominatedTime', Date.now());
-    await nominee.update();
+    let combatant = game.combat.combatants.find(c => c.id == game.combat.current.combatantId);
+    await combatant.setFlag('world', 'requestedNominee', tokenId);
   }
 
   async onUpdateCombatant(combatant, delta) {
-    if (delta && delta.flags && delta.flags.world && delta.flags.world.nominatedTime) {
-      await this.runInterruptCycle(combatant);
+    if (delta && delta.flags && delta.flags.world && delta.flags.world.requestedNominee) {
+      let requestedNominee = game.combat.combatants.find(c => c.token?.id ==  delta.flags.world.requestedNominee);
+      if (game.user.isGM) {
+        await requestedNominee.setFlag('world', 'nominatedTime', Date.now());
+      }
+      await this.runInterruptCycle(requestedNominee);
     }
-    this.render(true);
   }
   sleep(ms) {
     return new Promise(resolve => setTimeout(resolve, ms));
@@ -196,7 +198,7 @@ class PopcornViewer extends Application {
       let contents = `<h1>Round ${game.combat.round}</h1>`;
       if (game.combat.getFlag('world', 'isInterruptCycleActive'))
         contents += this.prepareNominee();
-      if (game.combat.current.turn > 0) {
+      if (game.combat.current.turn > 0 && game.combat.current) {
         contents += this.prepareCurrentTurn();
       }
       if(!game.user.isGM)
@@ -254,12 +256,12 @@ class PopcornViewer extends Application {
       <tr${this._getStyleString(currentCombatant)}>   
         <td width="50">
           <img 
-            src="${currentCombatant.token.actor.img}" 
+            src="${currentCombatant.token?.actor.img}" 
             width="40" 
             height="40"
             style="border: 0px"/>
         </td>
-        <td>${currentCombatant.token.name}</td>  
+        <td>${currentCombatant.token?.name}</td>  
         <td>${currentCombatant.getFlag('world', 'availableInterruptPoints')} / ${currentCombatant.getFlag('world', 'interruptPoints')}  
       </tr>`;
   }
@@ -422,7 +424,7 @@ class PopcornViewer extends Application {
 
   _onHover(token, hovered) {
     this.hoveredToken = hovered ? token : null;
-    if (game.combat.getCombatantByToken(token.id))
+    if (game.combat && game.combat.getCombatantByToken(token.id))
       this.render(false);
   }
 }
