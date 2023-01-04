@@ -8,9 +8,9 @@
     "esmodules/PopcornActor.js",
     "esmodules/PopcornCombat.js"
   ],
-  "version": "0.0.6",
+  "version": "0.0.12",
   "socket": true,
-  "download": "https://github.com/xantharl/foundry-popcorn-initiative/archive/refs/tags/0.0.10.zip",
+  "download": "https://github.com/xantharl/foundry-popcorn-initiative/archive/refs/tags/0.0.12.zip",
   "manifest": "https://raw.githubusercontent.com/xantharl/foundry-popcorn-initiative/master/module.json",
   "id": "popcorn",
   "compatibility": {
