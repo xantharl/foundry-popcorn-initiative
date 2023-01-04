@@ -277,7 +277,7 @@ class PopcornViewer extends Application {
   }
 
   prepareRemainingCombatants() {
-    var combatants = game.combat.combatants.filter(c => !c.isOwner || game.user.isGM);
+    var combatants = game.combat.combatants;//.filter(c => !c.isOwner || game.user.isGM);
     return this.prepareCombatantContents(combatants, 'Remaining Combatants', true);
   }
 
